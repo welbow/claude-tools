@@ -1,0 +1,28 @@
+#!/bin/bash
+# bao-login - admin login (userpass) to OpenBao; saves the token to
+# $BAO_TOKEN_FILE (0600 root) so plain `bao ...` works from any root shell.
+# Token lifetime = the userpass user's token_ttl; `bao-logout` revokes it early.
+# Config: /etc/default/bao-tools (BAO_ADMIN_USER required, BAO_TOKEN_FILE).
+[ -r /etc/default/bao-tools ] && . /etc/default/bao-tools
+BAO_TOKEN_FILE=${BAO_TOKEN_FILE:-/root/.bao-token}
+if [ -z "${BAO_ADMIN_USER:-}" ]; then
+    echo "set BAO_ADMIN_USER in /etc/default/bao-tools" >&2
+    exit 1
+fi
+umask 077
+
+if [ -s "$BAO_TOKEN_FILE" ] && ttl=$(bao token lookup -field=ttl 2>/dev/null); then
+    echo "already logged in ($ttl left) - bao-logout first to start over"
+    exit 0
+fi
+
+rm -f "$BAO_TOKEN_FILE"              # stale/expired token - don't send it along
+read -rsp "OpenBao password ($BAO_ADMIN_USER): " pw; echo
+tok=$(printf '%s' "$pw" | BAO_TOKEN= bao login -no-store -token-only -method=userpass username="$BAO_ADMIN_USER" password=-)
+unset pw
+if [ -z "$tok" ]; then
+    echo "login failed" >&2
+    exit 1
+fi
+printf '%s' "$tok" > "$BAO_TOKEN_FILE.tmp" && mv "$BAO_TOKEN_FILE.tmp" "$BAO_TOKEN_FILE"
+echo "logged in as $BAO_ADMIN_USER ($(bao token lookup -field=ttl) left) - run bao-logout when done"

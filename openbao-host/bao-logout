@@ -1,0 +1,8 @@
+#!/bin/bash
+# bao-logout - revoke the token bao-login saved and delete it.
+[ -r /etc/default/bao-tools ] && . /etc/default/bao-tools
+BAO_TOKEN_FILE=${BAO_TOKEN_FILE:-/root/.bao-token}
+if [ -s "$BAO_TOKEN_FILE" ]; then
+    bao token revoke -self >/dev/null 2>&1 && echo "token revoked" || echo "token was already expired/revoked"
+fi
+rm -f "$BAO_TOKEN_FILE"

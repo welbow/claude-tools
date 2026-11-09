@@ -1,0 +1,11 @@
+# /etc/default/bao-tools - config for bao, bao-login, bao-logout, bao-approve.
+# Copy to bao-tools (gitignored) and fill in; install.sh puts it in /etc/default/.
+
+# userpass admin user that bao-login logs in as (required)
+BAO_ADMIN_USER=admin
+
+# OpenBao container name
+BAO_CONTAINER=openbao
+
+# Where bao-login keeps the admin token (0600 root)
+BAO_TOKEN_FILE=/root/.bao-token

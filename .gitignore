@@ -1,0 +1,3 @@
+# Per-site config (hostnames, usernames). See the *.example files.
+windows/claude-tools.env
+openbao-host/bao-tools

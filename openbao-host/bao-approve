@@ -1,0 +1,36 @@
+#!/bin/bash
+# bao-approve - review and approve a Control Group request (e.g. Claude asking
+# for a kv/claude-gated/* secret). Needs a bao-login session.
+#   bao-approve <accessor>       accessor comes from claude-secret's ntfy push
+# Shows what OpenBao itself stored for the request (who, what, which path) - not
+# what the notification claims - then asks before approving.
+set -uo pipefail
+ACC=${1:-}
+if [ -z "$ACC" ] || [ "$ACC" = "-h" ] || [ "$ACC" = "--help" ]; then
+    sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
+    exit 1
+fi
+
+REQ=$(bao write -format=json sys/control-group/request accessor="$ACC") || {
+    echo "no such request (wrong accessor, expired, or not logged in - try bao-login)" >&2
+    exit 1
+}
+
+echo "$REQ" | jq -r '.data as $d | [
+  "Path:       \($d.request_path)",
+  "Operation:  \($d.request_operation)",
+  "Requested by: \(($d.request_entity.aliases // [])[0] | "\(.mount_type) \(.metadata.role_name // .name)")  (entity \($d.request_entity.name))",
+  "Approved:   \($d.approved)  (\(($d.authorizations // []) | length) approval(s) so far)"
+] | .[]'
+
+if [ "$(echo "$REQ" | jq -r .data.approved)" = "true" ]; then
+    echo "already approved - nothing to do"
+    exit 0
+fi
+
+read -rp "Approve? [y/N] " a
+case "$a" in
+    y|Y|yes) bao write -format=json sys/control-group/authorize accessor="$ACC" \
+                 | jq -r 'if .data.approved then "approved" else "recorded, more approvals needed" end' ;;
+    *) echo "not approved"; exit 1 ;;
+esac

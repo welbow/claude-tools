@@ -1,0 +1,13 @@
+#!/bin/bash
+# bao - OpenBao CLI on the Docker host (runs inside the OpenBao container).
+# Uses the token bao-login saved, if there is one; the token is handed over via
+# the environment, never on a command line.
+# Config: /etc/default/bao-tools (BAO_CONTAINER, BAO_TOKEN_FILE).
+[ -r /etc/default/bao-tools ] && . /etc/default/bao-tools
+BAO_CONTAINER=${BAO_CONTAINER:-openbao}
+BAO_TOKEN_FILE=${BAO_TOKEN_FILE:-/root/.bao-token}
+if [ -z "${BAO_TOKEN:-}" ] && [ -r "$BAO_TOKEN_FILE" ]; then
+    BAO_TOKEN=$(cat "$BAO_TOKEN_FILE")
+    export BAO_TOKEN
+fi
+exec docker exec -i -e BAO_TOKEN "$BAO_CONTAINER" bao "$@"
