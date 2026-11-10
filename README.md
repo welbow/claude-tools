@@ -56,9 +56,14 @@ path "kv/metadata/claude-gated/*" { capabilities = ["read", "list"] }
 
 ## Install and upgrade
 
-Both installers refuse uncommitted changes and record the deployed commit.
-Upgrading means editing or pulling the repo, reviewing, committing, and running
-the installer again.
+Both installers refuse uncommitted changes, show the commits since the last
+install and ask before installing, and record the deployed commit. Upgrading
+means pulling or committing in the repo, then running the installer again and
+reading what it shows you.
+
+The installers assume the agent may have write access to the repo, so they
+trust only what is already installed or owned by root/Administrators (details
+below). Review what they show before saying yes.
 
 **Windows** (agent side). This needs `C:\Program Files\Python312`; adjust the
 two wrappers if yours differs.
@@ -68,7 +73,12 @@ two wrappers if yours differs.
 2. Put the AppRole `bao-claude.role-id` / `bao-claude.secret-id` and the
    OpenBao CA `bao-ca.pem` in `%USERPROFILE%\.claude\secrets\`. Restrict that
    folder to the user and SYSTEM.
-3. From an **elevated** PowerShell, run `windows\deploy.ps1`.
+3. From an **elevated** PowerShell, run `windows\deploy.ps1` (first install).
+4. For upgrades, run the **installed** copy, `C:\Program Files\claude-tools\deploy.ps1`.
+   It can't be edited without elevation, finds the repo through the
+   admin-owned `REPO` file, and installs the committed tree (`git archive HEAD`).
+   It runs git with fsmonitor, hooks, the pager and external diff disabled, so
+   repo config can't run code elevated.
 
 It installs to `C:\Program Files\claude-tools\{bin,scripts}`. The files
 inherit Program Files' ACL (Users: read and execute), so the unelevated user
@@ -83,9 +93,16 @@ approval.
 **OpenBao host** (as root):
 
 ```bash
-cp openbao-host/bao-tools.example openbao-host/bao-tools   # fill in
+git clone <repo-url> /root/src/claude-tools                # must be root-owned
+cd /root/src/claude-tools
+cp openbao-host/bao-tools.example openbao-host/bao-tools   # fill in (or keep an existing /etc/default/bao-tools)
 openbao-host/install.sh                                    # -> /root/bin, /etc/default/bao-tools
+# upgrade: git pull && openbao-host/install.sh
 ```
+
+`install.sh` refuses a checkout with any file not owned by root, because a
+non-root user who could write there could change what root installs or plant
+git config that runs as root.
 
 ## License
 
