@@ -104,6 +104,22 @@ openbao-host/install.sh                                    # -> /root/bin, /etc/
 non-root user who could write there could change what root installs or plant
 git config that runs as root.
 
+## Changing the tools
+
+- Change the repo, never the installed copies. They're write-protected on
+  purpose, so don't loosen their ACLs or ownership to "fix" something. Commit,
+  have a human review, then rerun the installer as above.
+- The repo is mirrored publicly, so **site details never get committed**:
+  hostnames, IPs, usernames and paths go in the gitignored per-site config
+  (see the `*.example` files). Before every push, scan what's leaving for your
+  own domains and private address ranges:
+
+  ```bash
+  git diff @{u}..HEAD | grep -inE '<your-domain>|<your-other-domain>|192\.168\.|10\.[0-9]+\.'
+  ```
+
+  No output means it's clean.
+
 ## License
 
 MIT
